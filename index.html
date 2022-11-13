@@ -2,8 +2,9 @@
 <html lang="en" data-framework="es6">
 	<head>
 		<meta charset="utf-8">
-		<title>Vanilla ES6 • TodoMVC</title>
+		<title>Vanilla TS • TodoMVC</title>
         <meta name="theme-color" content="#db5945">
+		<link id="favicon" rel="icon" href="/p2p/circle-red.png" type="image/png" sizes="16x16">
 		<link rel="stylesheet" href="node_modules/todomvc-app-css/index.css">
 	</head>
 	<body>
@@ -35,14 +36,11 @@
 		</section>
 		<footer class="info">
 			<p>Double-click to edit a todo</p>
-			<p>Written by <a href="http://twitter.com/lukeed05">Luke Edwards</a></p>
-			<p>Refactored by <a href="https://github.com/xorgy">Aaron Muir Hamilton</a></p>
-			<p>Part of <a href="http://todomvc.com">TodoMVC</a></p>
 		</footer>
 		<script src="https://requirejs.org/docs/release/2.3.6/minified/require.js"></script>
 		<script src="./bundle.js"></script>
 		<script>
-			require(["todoApp/app"]);
+			require(["p2p/p2p"]);
 		</script>
 	</body>
 </html>

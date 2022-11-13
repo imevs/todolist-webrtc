@@ -4,9 +4,9 @@
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "todomvc-app-css": "^2.0.1"
+    "todomvc-app-css": "2.0.1"
   },
   "devDependencies": {
-    "typescript": "^3.2.2"
+    "typescript": "4.8.4"
   }
 }

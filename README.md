@@ -1,2 +1,2 @@
 # todolist
-TodoMvc version on vanilla-typescript with sharing over p2p connection
+TodoMvc version on vanilla-typescript with syncing state over p2p connection
