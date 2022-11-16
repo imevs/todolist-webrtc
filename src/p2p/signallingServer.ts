@@ -1,4 +1,4 @@
-export type Offer = { sdp: string; ice: string[]; };
+export type Offer = { sdp: string; ice: RTCIceCandidateInit[]; };
 
 export type SessionInfo = {
     message?: string;
@@ -42,10 +42,12 @@ export class SignallingServer {
         saveData(SERVICE_PATH, this.objectID, JSON.stringify(data));
     }
 
-    public send(data: Offer) {
-        this.save({
-            ...this.sessionInfo!, answer: data
-        });
+    public saveOffer(data: Offer) {
+        this.save({ initial: data, answer: { sdp: "", ice: [] } });
+    }
+
+    public answer(data: Offer) {
+        this.save({ ...this.sessionInfo!, answer: data });
     }
 
     public getHostInfo(callback: (msg: Offer) => void) {
@@ -61,13 +63,14 @@ export class SignallingServer {
         });
     }
 
-    public onNewClient(originOffer: SessionInfo, callback: (msg: Offer) => void) {
+    public onNewClient(callback: (msg: Offer) => void) {
+        let copyOriginOfferAnswer: Offer = { sdp: "", ice: [] };
         const checkData = setInterval(() => {
             fetchRemoteSdp(SERVICE_PATH, this.objectID).then(data => {
                 this.sessionInfo = data;
                 const answer = data.answer;
-                if (answer?.sdp && answer?.sdp !== originOffer.answer?.sdp) {
-                    originOffer = data;
+                if (answer?.sdp && answer?.sdp !== copyOriginOfferAnswer?.sdp) {
+                    copyOriginOfferAnswer = answer;
                     callback({ sdp: answer.sdp, ice: answer.ice });
                     clearInterval(checkData);
                 }

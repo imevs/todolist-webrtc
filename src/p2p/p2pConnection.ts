@@ -12,7 +12,7 @@ type Client = {
 export abstract class P2pConnection {
 
     protected connection: RTCPeerConnection;
-    protected iceCandidatesPromise: Promise<string[]>;
+    protected iceCandidatesPromise: Promise<RTCIceCandidateInit[]>;
     protected signallingServer: SignallingServer;
     protected p2pConnectionReady: () => Promise<{
         send: (msg: string) => void;
@@ -33,14 +33,14 @@ export abstract class P2pConnection {
         this.connection = new RTCPeerConnection({ iceServers: this.iceServers });
 
         this.iceCandidatesPromise = new Promise((resolve, _reject) => {
-            const iceCandidates: string[] = [];
-            this.connection.onicecandidate = (event) => {
+            const iceCandidates: RTCIceCandidateInit[] = [];
+            this.connection.addEventListener("icecandidate", event => {
                 if (event.candidate) {
-                    iceCandidates.push(event.candidate.candidate);
+                    iceCandidates.push(event.candidate.toJSON());
                 } else {
                     resolve(iceCandidates);
                 }
-            };
+            });
         });
 
         const channelExport = {
@@ -53,28 +53,25 @@ export abstract class P2pConnection {
         this.p2pConnectionReady = () => new Promise((resolve, _reject) => {
             let channel: RTCDataChannel = this.connection.createDataChannel("dataChannel");
             channelExport.channel = channel;
-            channel.onopen = () => {
+            channel.addEventListener("open", () => {
                 const readyState = channel.readyState;
                 console.log('channel state is: ' + readyState);
                 resolve(channelExport);
-            };
-            this.connection.ondatachannel = (event) => {
-                console.log("ondatachannel");
+            });
+            this.connection.addEventListener("datachannel", event => {
                 channel = event.channel;
                 channelExport.channel = channel;
-            };
-            channel.onmessage = (data) => {
+            });
+            channel.addEventListener("message", data => {
                 channelExport.onMessage(data);
-            };
+            });
         });
     }
 
-    public addIceCandidate = (candidate: string) => {
-        return this.connection.addIceCandidate(new RTCIceCandidate({
-            candidate: candidate,
-            sdpMLineIndex: 0,
-            sdpMid: "data",
-        }));
+    public addIceCandidate = (candidate: RTCIceCandidateInit) => {
+        return this.connection.addIceCandidate(candidate).catch(err => {
+            console.error("addIceCandidate::error", candidate, err);
+        });
     };
 
     public connectToRemote(sdp: string, type: "offer" | "answer") {
@@ -99,7 +96,7 @@ export abstract class P2pConnection {
                 });
         */
 
-        this.connection.oniceconnectionstatechange = () => {
+        this.connection.addEventListener("iceconnectionstatechange", () => {
             console.log("iceConnectionState", this.connection.iceConnectionState);
             switch (this.connection.iceConnectionState) {
                 case "connected":
@@ -113,6 +110,6 @@ export abstract class P2pConnection {
                     this.sendOffer();
                     break;
             }
-        };
+        });
     }
 }

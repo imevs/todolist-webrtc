@@ -11,7 +11,8 @@ const client = {
             return todoApp.store.getLocalStorage();
         },
         setData: (data: any) => {
-            return todoApp.store.setLocalStorage(data);
+            todoApp.store.setLocalStorage(data);
+            todoApp._filter(true);
         },
     }
 };
