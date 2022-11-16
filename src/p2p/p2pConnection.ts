@@ -5,7 +5,7 @@ type Client = {
     objectID: string;
     store: {
         setData: (data: any) => void;
-        getData: () => any;
+        onDataUpdated: (callback: (data: any) => void) => void;
     }
 };
 
@@ -79,7 +79,6 @@ export abstract class P2pConnection {
     };
 
     protected abstract sendOffer(): void;
-    public abstract connect(): void;
 
     public setupReconnectLogic() {
         // let isReconnecting = false;
@@ -111,5 +110,24 @@ export abstract class P2pConnection {
                     break;
             }
         });
+    }
+
+    public syncData() {
+        this.p2pConnectionReady().then(channel => {
+            this.app.store.onDataUpdated(data => {
+                console.log("Sync data");
+                channel.send(JSON.stringify(data));
+            });
+            channel.onMessage = (msg: MessageEvent) => {
+                console.log("Received", msg);
+                this.app.store.setData(JSON.parse(msg.data));
+            };
+        });
+    }
+
+    public connect() {
+        this.syncData();
+        this.sendOffer();
+        this.setupReconnectLogic();
     }
 }

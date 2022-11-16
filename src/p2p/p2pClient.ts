@@ -11,15 +11,4 @@ export class P2pConnectionClient extends P2pConnection {
             this.signallingServer.answer({ sdp: localDesc.sdp!, ice: iceAnswer });
         });
     }
-
-    public connect() {
-        this.p2pConnectionReady().then(channel => {
-            channel.onMessage = (msg: MessageEvent) => {
-                console.log("Received", msg);
-                this.app.store.setData(JSON.parse(msg.data));
-            };
-        });
-        this.sendOffer();
-        this.setupReconnectLogic();
-    }
 }

@@ -3,6 +3,7 @@ import {emptyItemQuery, ItemType} from './item';
 export default class Store {
 	public localStorage = window.localStorage;
 	public liveTodos: ItemType[] = [];
+	private onDataUpdatedHandlers: ((data: ItemType[]) => void)[] = [];
 
 	/**
 	 * @param {!string} name Database name
@@ -12,6 +13,10 @@ export default class Store {
 		if (callback) {
 			callback();
 		}
+	}
+
+	public onDataUpdated(callback: (data: ItemType[]) => void) {
+		this.onDataUpdatedHandlers.push(callback);
 	}
 
 	/**
@@ -73,6 +78,7 @@ export default class Store {
 
 		if (callback) {
 			callback();
+			this.onDataUpdatedHandlers.forEach(handler => handler(todos as ItemType[]));
 		}
 	}
 
@@ -89,6 +95,7 @@ export default class Store {
 
 		if (callback) {
 			callback();
+			this.onDataUpdatedHandlers.forEach(handler => handler(todos));
 		}
 	}
 
@@ -114,6 +121,7 @@ export default class Store {
 
 		if (callback) {
 			callback(todos as any);
+			this.onDataUpdatedHandlers.forEach(handler => handler(todos));
 		}
 	}
 
