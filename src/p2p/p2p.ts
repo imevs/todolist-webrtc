@@ -7,6 +7,9 @@ const isHost = window.location.search.indexOf("host") !== -1;
 const client = {
     objectID: "636975d12b3499323bf8cea7", // read from url, create new if it does not exist
     store: {
+        getData: () => {
+            return todoApp.store.getLocalStorage();
+        },
         onDataUpdated: (callback: (data: any) => void) => {
             todoApp.store.onDataUpdated(callback);
         },
@@ -16,6 +19,10 @@ const client = {
         },
     }
 };
+
+if (isHost) {
+    todoApp._filter(true);
+}
 
 const connection = isHost
     ? new P2pConnectionHost(client)

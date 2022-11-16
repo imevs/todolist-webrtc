@@ -4,6 +4,7 @@ import {setConnectedStatus, setDisconnectedStatus} from "./connectionStatus";
 type Client = {
     objectID: string;
     store: {
+        getData: () => any;
         setData: (data: any) => void;
         onDataUpdated: (callback: (data: any) => void) => void;
     }
@@ -55,7 +56,7 @@ export abstract class P2pConnection {
             channelExport.channel = channel;
             channel.addEventListener("open", () => {
                 const readyState = channel.readyState;
-                console.log('channel state is: ' + readyState);
+                console.log((new Date()).toISOString(), 'channel state is: ' + readyState);
                 resolve(channelExport);
             });
             this.connection.addEventListener("datachannel", event => {
@@ -81,22 +82,8 @@ export abstract class P2pConnection {
     protected abstract sendOffer(): void;
 
     public setupReconnectLogic() {
-        // let isReconnecting = false;
-        /*
-                window.addEventListener('unhandledrejection', (error) => {
-                    if (isReconnecting) return;
-                    console.log("Fail to connect");
-                    setDisconnectedStatus();
-                    isReconnecting = true;
-                    setTimeout(() => {
-                        this.sendOffer();
-                        isReconnecting = false;
-                    }, 1000);
-                });
-        */
-
         this.connection.addEventListener("iceconnectionstatechange", () => {
-            console.log("iceConnectionState", this.connection.iceConnectionState);
+            console.log((new Date()).toISOString(), "iceConnectionState", this.connection.iceConnectionState);
             switch (this.connection.iceConnectionState) {
                 case "connected":
                 case "completed":
@@ -113,15 +100,17 @@ export abstract class P2pConnection {
     }
 
     public syncData() {
-        this.p2pConnectionReady().then(channel => {
+        return this.p2pConnectionReady().then(channel => {
+            console.log((new Date()).toISOString(), "p2pConnectionReady");
             this.app.store.onDataUpdated(data => {
-                console.log("Sync data");
+                console.log((new Date()).toISOString(), "Sync data");
                 channel.send(JSON.stringify(data));
             });
             channel.onMessage = (msg: MessageEvent) => {
-                console.log("Received", msg);
+                console.log((new Date()).toISOString(), "Received", msg.data);
                 this.app.store.setData(JSON.parse(msg.data));
             };
+            return channel;
         });
     }
 

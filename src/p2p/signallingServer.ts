@@ -14,7 +14,7 @@ const saveData = (path: string, resourceID: string, data: string) => {
 
     req.onreadystatechange = () => {
         if (req.readyState == XMLHttpRequest.DONE) {
-            console.log("Data saved");
+            console.log("Signalling data saved");
         }
     };
 
