@@ -1,5 +1,5 @@
-import { SignallingServer} from "./signallingServer";
-import {setConnectedStatus, setDisconnectedStatus} from "./connectionStatus";
+import { SignallingServer } from "./signallingServer";
+import { log, setConnectedStatus, setDisconnectedStatus } from "./connectionStatus";
 
 type Client = {
     objectID: string;
@@ -10,22 +10,24 @@ type Client = {
     }
 };
 
+export type Channel = {
+    send: (msg: string) => void;
+    onMessage: (msg: MessageEvent) => void;
+};
+
 export abstract class P2pConnection {
 
     protected connection: RTCPeerConnection;
+    protected channel: RTCDataChannel | undefined;
     protected iceCandidatesPromise: Promise<RTCIceCandidateInit[]>;
     protected signallingServer: SignallingServer;
-    protected p2pConnectionReady: () => Promise<{
-        send: (msg: string) => void;
-        onMessage: (msg: MessageEvent) => void;
-    }>;
     // https://gist.github.com/sagivo/3a4b2f2c7ac6e1b5267c2f1f59ac6c6b
     // https://webrtc.github.io/samples/src/content/peerconnection/trickle-ice/
     protected iceServers = [
         // { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' },
+        // { urls: 'stun:stun1.l.google.com:19302' },
         // { urls: 'stun:stun2.l.google.com:19302' },
-        // { urls: 'stun:stun3.l.google.com:19302' },
+        { urls: 'stun:stun3.l.google.com:19302' },
         // { urls: 'stun:stun4.l.google.com:19302' },
     ];
 
@@ -43,28 +45,33 @@ export abstract class P2pConnection {
                 }
             });
         });
+    }
 
-        const channelExport = {
-            channel: null as (null | RTCDataChannel),
-            send: (msg: string) => channelExport.channel?.send(msg),
-            onMessage: (msg: MessageEvent) => {
-                console.log("default onMessage", msg);
-            },
-        };
-        this.p2pConnectionReady = () => new Promise((resolve, _reject) => {
-            let channel: RTCDataChannel = this.connection.createDataChannel("dataChannel");
-            channelExport.channel = channel;
-            channel.addEventListener("open", () => {
-                const readyState = channel.readyState;
-                console.log((new Date()).toISOString(), 'channel state is: ' + readyState);
+    public createConnectionReady(): Promise<Channel> {
+        log(this.createConnectionReady.name);
+
+        return new Promise((resolve, _reject) => {
+            this.channel = this.channel && this.channel.readyState === "open"
+                ? this.channel
+                : this.connection.createDataChannel("dataChannel");
+
+            const channelExport: Channel = {
+                send: msg => this.channel?.send(msg),
+                onMessage: msg => { log("default onMessage", msg); },
+            };
+            this.channel.addEventListener("close", () => {
+                log("channel state changed: " + this.channel?.readyState);
+            });
+            this.channel.addEventListener("open", () => {
+                log("channel state changed: " + this.channel?.readyState);
                 resolve(channelExport);
             });
-            this.connection.addEventListener("datachannel", event => {
-                channel = event.channel;
-                channelExport.channel = channel;
-            });
-            channel.addEventListener("message", data => {
+            this.channel.addEventListener("message", data => {
                 channelExport.onMessage(data);
+            });
+            this.connection.addEventListener("datachannel", event => {
+                log("datachannel: ", event);
+                this.channel = event.channel;
             });
         });
     }
@@ -83,7 +90,7 @@ export abstract class P2pConnection {
 
     public setupReconnectLogic() {
         this.connection.addEventListener("iceconnectionstatechange", () => {
-            console.log((new Date()).toISOString(), "iceConnectionState", this.connection.iceConnectionState);
+            log("iceConnectionState", this.connection.iceConnectionState);
             switch (this.connection.iceConnectionState) {
                 case "connected":
                 case "completed":
@@ -94,29 +101,28 @@ export abstract class P2pConnection {
                 case "disconnected":
                     setDisconnectedStatus();
                     this.sendOffer();
+                    this.enableDataSynchronization().then();
                     break;
             }
         });
     }
 
-    public syncData() {
-        return this.p2pConnectionReady().then(channel => {
-            console.log((new Date()).toISOString(), "p2pConnectionReady");
+    public enableDataSynchronization() {
+        return this.createConnectionReady().then(channel => {
+            log("p2pConnectionReady");
             this.app.store.onDataUpdated(data => {
-                console.log((new Date()).toISOString(), "Sync data");
+                log("Sync data", data);
                 channel.send(JSON.stringify(data));
             });
-            channel.onMessage = (msg: MessageEvent) => {
-                console.log((new Date()).toISOString(), "Received", msg.data);
-                this.app.store.setData(JSON.parse(msg.data));
+            channel.onMessage = msg => {
+                log("Received", msg.data);
+                const parsedData = JSON.parse(msg.data);
+                if (!parsedData.isTrusted) {
+                    this.app.store.setData(parsedData);
+                }
             };
             return channel;
         });
     }
 
-    public connect() {
-        this.syncData();
-        this.sendOffer();
-        this.setupReconnectLogic();
-    }
 }

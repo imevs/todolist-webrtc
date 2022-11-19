@@ -27,7 +27,12 @@ const saveData = (path: string, resourceID: string, data: string) => {
 };
 
 const fetchRemoteSdp = async (path: string, resourceID: string): Promise<SessionInfo> => {
-    return (await fetch(`${path}/b/${resourceID}/latest`, { headers: { "X-Access-Key": accessToken, "X-Bin-Meta": "false" } })).json();
+    const result = (await fetch(
+        `${path}/b/${resourceID}/latest`,
+        { headers: { "X-Access-Key": accessToken, "X-Bin-Meta": "false" } }
+    )).json();
+    result.then(data => console.log("fetchRemoteSdp", data));
+    return result;
 };
 
 
@@ -43,23 +48,22 @@ export class SignallingServer {
     }
 
     public saveOffer(data: Offer) {
-        this.save({ initial: data, answer: { sdp: "", ice: [] } });
+        const answer = /*this.sessionInfo?.answer ?? */{ sdp: "", ice: [] };
+        this.save({ initial: data, answer: answer });
     }
 
-    public answer(data: Offer) {
+    public saveAnswer(data: Offer) {
         this.save({ ...this.sessionInfo!, answer: data });
     }
 
-    public getHostInfo(callback: (msg: Offer) => void) {
+    public getHostInfo(type: "initial" | "answer", callback: (msg: Offer | undefined) => void) {
         fetchRemoteSdp(SERVICE_PATH, this.objectID).then(data => {
-            console.log("fetchRemoteSdp", data);
             this.sessionInfo = data;
-            if (data.initial) {
-                callback({
-                    sdp: data.initial.sdp,
-                    ice: data.initial.ice,
-                });
-            }
+            const result = data[type];
+            callback(result ? {
+                sdp: result.sdp,
+                ice: result.ice,
+            } : undefined);
         });
     }
 
